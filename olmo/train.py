@@ -129,7 +129,7 @@ def cross_entropy_loss(
     compute_z_loss: bool = False,
     z_loss_multiplier: float = 1e-4,
 ):
-    loss = F.cross_entropy(logits, labels, ignore_index=ignore_index, reduction=reduction)
+    loss = - F.cross_entropy(logits, labels, ignore_index=ignore_index, reduction=reduction)
 
     if not compute_z_loss:
         return loss, None
