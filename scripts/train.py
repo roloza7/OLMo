@@ -113,6 +113,7 @@ def main(cfg: TrainConfig) -> None:
     if cfg.wandb is not None and (get_global_rank() == 0 or not cfg.wandb.rank_zero_only):
         wandb_dir = Path(cfg.save_folder) / "wandb"
         wandb_dir.mkdir(parents=True, exist_ok=True)
+        print(cfg.wandb)
         wandb.init(
             dir=str(wandb_dir),
             project=cfg.wandb.project,
@@ -387,6 +388,7 @@ if __name__ == "__main__":
     log.info(f"Multiprocessing start method set to '{mp.get_start_method()}'")
     if torch.cuda.is_available():
         # Set CUDA device.
+        print("CUDA is available")
         torch.cuda.set_device(f"cuda:{get_local_rank()}")
 
         # Initialize process group.
@@ -422,14 +424,14 @@ if __name__ == "__main__":
         yaml_path, args_list = sys.argv[1], sys.argv[2:]
     except IndexError:
         raise OLMoCliError(f"Usage: {sys.argv[0]} [CONFIG_PATH] [OPTIONS]")
-
+    print("DEVICE: ", device_as_string)
     cfg = TrainConfig.load(yaml_path, [clean_opt(s) for s in args_list])
-    if torch.device("mps"):
+    if torch.device(device_as_string).type == "mps":
         log.info("Device is MPS. Updating config...")
         cfg.model.init_device = "mps"
         cfg.distributed_strategy = "single"  # type: ignore
 
-    if torch.device("cpu"):
+    if torch.device(device_as_string).type == "cpu":
         log.info("Device is CPU. Updating config...")
         cfg.model.init_device = "cpu"
         cfg.distributed_strategy = "single"  # type: ignore

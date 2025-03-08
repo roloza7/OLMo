@@ -129,7 +129,16 @@ def cross_entropy_loss(
     compute_z_loss: bool = False,
     z_loss_multiplier: float = 1e-4,
 ):
-    loss = - F.cross_entropy(logits, labels, ignore_index=ignore_index, reduction=reduction)
+    unlearn = os.environ['OLMO_TRAIN_MODE'] == 'unlearn'
+    if unlearn == None:
+        log.warning("OLMO_TRAIN_MODE environment variable is not set. Defaulting to standard training mode.")
+        unlearn = False
+
+    loss = F.cross_entropy(logits, labels, ignore_index=ignore_index, reduction=reduction)
+    
+    if unlearn:
+        # We want to unlearn so we maximize the loss
+        loss = -loss
 
     if not compute_z_loss:
         return loss, None
@@ -164,6 +173,11 @@ try:
         # The `ignored_index` parameter of `cross_entropy_loss` was changed to `ignore_index` in v2.5.8 with commit https://github.com/Dao-AILab/flash-attention/commit/ec6d22143b5d375e253b2ebfc563b26a43f43684
         ce_loss_use_ignore_index_param = version.parse(flash_attn.__version__) >= version.parse("2.5.8")
 
+        unlearn = os.environ['OLMO_TRAIN_MODE'] == 'unlearn'
+        if unlearn == None:
+            log.warning("OLMO_TRAIN_MODE environment variable is not set. Defaulting to standard training mode.")
+            unlearn = False
+
         if ce_loss_use_ignore_index_param:
             ignore_index_kwarg = {"ignore_index": ignore_index}
         else:
@@ -179,6 +193,11 @@ try:
             process_group=None,
             **ignore_index_kwarg,
         )
+
+        # Ascend the gradient
+        # We want to unlearn so we maximize the loss
+        if unlearn:
+            loss = -loss
 
         mask = labels != ignore_index
 
